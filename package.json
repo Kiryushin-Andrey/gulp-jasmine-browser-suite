@@ -1,0 +1,30 @@
+{
+  "name": "jasmine-browser-suite",
+  "license": "MIT",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kiryushin-Andrey/jasmine-browser-suite"
+  },
+  "keywords": [
+    "test",
+    "testrunner",
+    "jasmine",
+    "browser",
+    "generate"
+  ],
+  "description": "Html test runner generator for arbitrary set of Jasmine tests files.",
+  "homepage": "https://github.com/Kiryushin-Andrey/jasmine-browser-suite",
+  "main": "./index.js",
+  "dependencies": {
+    "handlebars": "~4.0.5",
+    "jasmine-core": "~2.4.1",
+    "q": "~1.4.1",
+    "requirejs": "~2.1.22"
+  },
+  "author": {
+    "name": "Kiryushin Anrey",
+    "email": "kiryushin.andrey@gmail.com"
+  },
+  "_id": "jasmine-browser-suite@0.1.0"
+}

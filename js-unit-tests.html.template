@@ -1,0 +1,120 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+    <head>
+		<title>SmartCAT FrontEnd Tests Suite</title>
+		<link rel="stylesheet" type="text/css" href="./node_modules/jasmine-core/lib/jasmine-core/jasmine.css">
+		<script type="text/javascript" src="./node_modules/jasmine-core/lib/jasmine-core/jasmine.js"></script>
+		<script type="text/javascript" src="./node_modules/jasmine-core/lib/jasmine-core/jasmine-html.js"></script>
+		<script type="text/javascript" src="./node_modules/jasmine-core/lib/jasmine-core/boot.js"></script>
+		<script type="text/javascript" src="./node_modules/q/q.js"></script>
+
+		<!-- External non-requirejs scripts -->
+		{{#list initialScripts}}
+			<script type="text/javascript" src="{{.}}"></script>
+		{{/list}}
+
+		<script type="text/javascript" src="./node_modules/requirejs/require.js"></script>
+
+		<!-- External requirejs modules -->
+
+		<script type="text/javascript">
+
+			var testFiles = {{{json testFiles}}};
+
+			// helper для регистрации набора тестов в файле с тестами, для использования вместо describe
+			function testSuite(testedViewModel, describeCallback) {
+				define([], function () {
+					var deferred = Q.defer();
+					require([testedViewModel], function () {
+						var dependencies = arguments;
+						deferred.resolve(function() {
+							describeCallback.apply(this, dependencies);
+						});
+					});
+					return deferred.promise;
+				});
+			}
+		
+			// группировка тестов по папкам
+			function getFolderTreeNodeForFile(testFile, rootNode) {
+				var parts = testFile.split('/'),
+					currentNode = rootNode;
+				parts.slice(0, -1).forEach(function (folder, ix) {
+					currentNode = currentNode[folder] = (currentNode[folder] || {});
+				});
+				return currentNode;
+			}
+			function rollupNodes(node) {
+				if (typeof(node) !== 'object')
+					return;		
+				var childKeys = Object.getOwnPropertyNames(node);
+				if (childKeys.length == 1 && typeof(node[childKeys[0]]) === 'object') {
+					var childKey = childKeys[0],
+						grandchildKeys = Object.getOwnPropertyNames(node[childKey]);
+					if (grandchildKeys.length == 1) {
+						var grandchildKey = grandchildKeys[0];
+						node[childKey + '/' + grandchildKey] = node[childKey][grandchildKey];
+						delete node[childKey];
+						rollupNodes(node); 
+					}
+				}
+				for (var childKey in node) {
+					rollupNodes(node[childKey]);
+				}
+			}
+				
+			// последовательная загрузка всех тестов,
+			// чтобы каждый тест загружал свои с baseUrl, настроенным на его папку
+			function loadTestFiles(files, loadedModules, finalAction) {
+				var file = files[0],
+					baseUrl = file.substring(0, file.lastIndexOf('/')),
+					filename = file.substring(baseUrl.length + 1, file.length - 3);
+				require.config({ baseUrl: baseUrl });
+				require([filename], function (testModulePromise) {
+					testModulePromise
+						.then(function (describeCallback) {
+							loadedModules.push({
+								folder: baseUrl,
+								filename: file.substring(baseUrl.length + 1),
+								describeCallback: describeCallback						
+							});
+							if (files.length > 1) {
+								loadTestFiles(files.slice(1), loadedModules, finalAction);
+							} else {
+								finalAction(loadedModules);
+							}
+						})
+						.fail(function (error) { throw error; });
+				});
+			}
+			
+			// выполнение всех тестов с учетом иерархии папок
+			function describeRecursive(node) {
+				for (var key in node) {
+					describe(key, function () {
+						if (typeof(node[key]) === 'function') {
+							node[key]();
+						} else {
+							describeRecursive(node[key]);
+						}
+					});
+				}
+			}
+			loadTestFiles(testFiles, [], function (testModules) {
+				var structure = {};
+				testModules.forEach(function (suite) {
+					var folderTreeNode = getFolderTreeNodeForFile(suite.folder, structure);
+					folderTreeNode[suite.filename] = suite.describeCallback;
+				});
+				rollupNodes(structure);
+				describeRecursive(structure);
+				window.onload();				
+			});
+				
+		</script>
+
+    </head>
+    <body>
+    </body>
+</html>
